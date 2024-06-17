@@ -13,6 +13,7 @@
     "colors": "^1.4.0",
     "dotenv": "^16.4.5",
     "ethers": "^5.7.2",
-    "fs": "^0.0.1-security"
+    "fs": "^0.0.1-security",
+    "web3": "^4.10.0"
   }
 }

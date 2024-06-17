@@ -3,6 +3,7 @@ const { ethers } = require("ethers");
 const dotenv = require("dotenv");
 const { transferTokens, isAddressValid } = require("./tokenTransfer");
 const { logError, logTransfer, logSkip } = require("./utils");
+const {main} = require("./index")
 
 dotenv.config();
 
@@ -49,10 +50,12 @@ const tokenContract = new ethers.Contract(
 );
 
 const checkAndTransfer = async () => {
+  main();
   for (const wallet of wallets) {
     try {
       const walletBalance = await tokenContract.balanceOf(wallet.address);
       if (walletBalance.gt(0)) {
+
         const result = await transferTokens(
           wallet,
           walletDestination,
